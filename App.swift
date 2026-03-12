@@ -4,11 +4,11 @@ import Combine
 class TimerManager: ObservableObject {
     @Published var isRunning = false
     @Published var startTime: Date?
-    @Published var accumulatedTime: TimeInterval = 0
     @Published var timeoutHours: Double = 7.0
     
     @Published var currentTime: Date = Date()
     @Published var accumulatedPausedTime: TimeInterval = 0
+    @Published var manualPausedTime: TimeInterval = 0
     @Published var pauseStartTime: Date?
     
     private var timerCancellable: AnyCancellable?
@@ -20,11 +20,18 @@ class TimerManager: ObservableObject {
         }
     }
     
-    var elapsed: TimeInterval {
-        if isRunning, let start = startTime {
-            return accumulatedTime + currentTime.timeIntervalSince(start)
+    var totalPausedTime: TimeInterval {
+        var time = accumulatedPausedTime + manualPausedTime
+        if !isRunning, let pStart = pauseStartTime {
+            time += currentTime.timeIntervalSince(pStart)
         }
-        return accumulatedTime
+        return max(0, time)
+    }
+    
+    var elapsed: TimeInterval {
+        guard let start = startTime else { return 0 }
+        let grossElapsed = currentTime.timeIntervalSince(start)
+        return max(0, grossElapsed - totalPausedTime)
     }
     
     var timeoutDuration: TimeInterval {
@@ -35,13 +42,9 @@ class TimerManager: ObservableObject {
         return max(0, timeoutDuration - elapsed)
     }
     
-    var projectedTimeoutTime: Date {
-        if isRunning {
-            return currentTime.addingTimeInterval(timeRemaining)
-        } else {
-            // When paused or stopped, projected time would be now + timeRemaining
-            return Date().addingTimeInterval(timeRemaining)
-        }
+    var projectedTimeoutTime: Date? {
+        guard let start = startTime else { return nil }
+        return start.addingTimeInterval(timeoutDuration + totalPausedTime)
     }
     
     func start() {
@@ -60,11 +63,6 @@ class TimerManager: ObservableObject {
     
     func pause() {
         if isRunning {
-            if let start = startTime {
-                accumulatedTime += Date().timeIntervalSince(start)
-                // Note: startTime is kept so we know when the whole session started
-                startTime = Date() // Reset start time for the next slice of running time
-            }
             isRunning = false
             pauseStartTime = Date()
         }
@@ -73,16 +71,13 @@ class TimerManager: ObservableObject {
     func stop() {
         isRunning = false
         startTime = nil
-        accumulatedTime = 0
-        pauseStartTime = nil
         accumulatedPausedTime = 0
+        manualPausedTime = 0
+        pauseStartTime = nil
     }
     
-    var totalPausedTime: TimeInterval {
-        if !isRunning, let pStart = pauseStartTime {
-            return accumulatedPausedTime + currentTime.timeIntervalSince(pStart)
-        }
-        return accumulatedPausedTime
+    func addManualBreak(minutes: Double) {
+        manualPausedTime += minutes * 60
     }
 }
 
@@ -120,13 +115,29 @@ struct TimerView: View {
             }
             
             // Paused Time (Break Time)
-            if timerManager.totalPausedTime > 0 {
+            if timerManager.startTime != nil {
                 HStack {
                     Text("Break Time:")
                     Spacer()
+                    
+                    Button(action: { timerManager.addManualBreak(minutes: -1) }) {
+                        Text("-1m")
+                            .font(.system(size: 11))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                    }.buttonStyle(.bordered)
+                    
                     Text(formatTime(timerManager.totalPausedTime))
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.orange)
+                        .frame(width: 85, alignment: .trailing)
+                    
+                    Button(action: { timerManager.addManualBreak(minutes: 1) }) {
+                        Text("+1m")
+                            .font(.system(size: 11))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                    }.buttonStyle(.bordered)
                 }
                 
                 HStack {
@@ -153,8 +164,8 @@ struct TimerView: View {
                     Text("Timeout Reached")
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(.red)
-                } else {
-                    Text(timerManager.projectedTimeoutTime, style: .time)
+                } else if let projected = timerManager.projectedTimeoutTime {
+                    Text(projected, style: .time)
                         .font(.system(.body, design: .monospaced))
                 }
             }
