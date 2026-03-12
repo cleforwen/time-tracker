@@ -20,7 +20,7 @@ let package = Package(
                 "TimeTracker.app",
                 ".gitignore"
             ],
-            sources: ["App.swift"]
+            sources: ["TimeTrackerApp.swift", "TimerManager.swift", "TimerView.swift"]
         )
     ]
 )

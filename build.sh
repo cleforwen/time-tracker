@@ -39,7 +39,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
 </plist>
 EOF
 
-# Build Swift Executable
-swiftc -parse-as-library App.swift -o "$MACOS_DIR/TimeTracker"
+# Build Swift Executables
+swiftc -parse-as-library TimeTrackerApp.swift TimerManager.swift TimerView.swift -o "$MACOS_DIR/TimeTracker"
 
 echo "Build successful: $APP_NAME generated"
