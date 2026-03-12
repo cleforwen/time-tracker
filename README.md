@@ -39,4 +39,4 @@ Once opened, look for the Timer icon in the top right menu bar of your screen.
 - Keep track of your **Time To Timeout** field to understand exactly when you'll be done! 
 
 ## Author
-Generated with AI.
+[fcleforwen](https://github.com/fcleforwen)
