@@ -96,7 +96,7 @@ struct TimerView: View {
             
             // Timeout Config
             HStack {
-                Text("Time to render(hours):")
+                Text("Working Time (hours):")
                 Spacer()
                 TextField("Hours", value: $timerManager.timeoutHours, formatter: NumberFormatter())
                     .textFieldStyle(RoundedBorderTextFieldStyle())
